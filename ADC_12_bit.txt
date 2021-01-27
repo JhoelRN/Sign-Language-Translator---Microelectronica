@@ -1,0 +1,70 @@
+
+library ieee;
+  use ieee.std_logic_1164.all;
+  use ieee.numeric_std.all;
+ use ieee.math_real.all;
+ USE ieee.std_logic_arith.all; 
+ 
+entity ADC_12_bit is
+   port (analog_in0,analog_in1,analog_in2,analog_in3 : in real range 0.75 to 1.25;
+        analog_integer0,analog_integer1,analog_integer2,analog_integer3: out integer range 0 to 4095;
+       clk:in std_logic;
+        digital_out : out std_logic_vector(11 downto 0);
+        channel: out std_logic_vector(1 downto 0)
+       );
+end entity;
+architecture Behavioral of ADC_12_bit is
+
+--  constant conversion_time: time := 25 ns;
+  signal instantly_digitized_signal : integer range 0 to 4095;
+  signal analog_signal0, analog_signal1, analog_signal2, analog_signal3: real range 0.75 to 1.25;
+  signal digitized_signal0,digitized_signal1,digitized_signal2,digitized_signal3: integer range 0 to 4095;
+  signal adc_out: std_logic_vector(11 downto 0);
+  CONSTANT max: INTEGER := 3;
+  SIGNAL CONT : INTEGER RANGE 0 TO max:=0;
+begin
+analog_signal0 <= analog_in0;
+analog_signal1 <= analog_in1;
+analog_signal2 <= analog_in2;
+analog_signal3 <= analog_in3;
+
+process(analog_signal0, analog_signal1, analog_signal2, analog_signal3)
+  begin   
+    digitized_signal0 <= integer((analog_signal0-0.75) * 8190.0);
+    digitized_signal1 <= integer((analog_signal1-0.75) * 8190.0);
+    digitized_signal2 <= integer((analog_signal2-0.75) * 8190.0);
+    digitized_signal3 <= integer((analog_signal3-0.75) * 8190.0);
+
+  end process;
+ process(clk,digitized_signal0,digitized_signal1,digitized_signal2,digitized_signal3)      
+ begin
+ IF RISING_EDGE(clk) THEN
+    case CONT is
+    when 0 => instantly_digitized_signal <= digitized_signal0;
+    when 1 => instantly_digitized_signal <= digitized_signal1;
+    when 2 => instantly_digitized_signal <= digitized_signal2;
+    when 3 => instantly_digitized_signal <= digitized_signal3;
+    when others => null;
+    end case; 
+    channel <= conv_std_logic_vector(cont,2);
+    IF CONT = max THEN
+            CONT <= 0;
+    else 
+            CONT <= CONT +1; 
+    END IF; 
+
+     
+ END IF;
+
+ end process;
+
+ analog_integer0 <=  digitized_signal0;
+ analog_integer1 <=  digitized_signal1;
+ analog_integer2 <=  digitized_signal2;
+ analog_integer3 <=  digitized_signal3;
+ 
+ adc_out <= conv_std_logic_vector(instantly_digitized_signal,12); 
+  digital_out <= adc_out;
+end Behavioral;
+
+

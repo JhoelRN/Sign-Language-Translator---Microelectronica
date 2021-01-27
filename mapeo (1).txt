@@ -1,0 +1,210 @@
+----------------------------------------------------------------------------------
+-- Company: 
+-- Engineer: 
+-- 
+-- Create Date: 09.08.2020 18:54:28
+-- Design Name: 
+-- Module Name: mapeo - Behavioral
+-- Project Name: 
+-- Target Devices: 
+-- Tool Versions: 
+-- Description: 
+-- 
+-- Dependencies: 
+-- 
+-- Revision:
+-- Revision 0.01 - File Created
+-- Additional Comments:
+-- 
+----------------------------------------------------------------------------------
+
+
+library ieee;
+use ieee.std_logic_1164.all;
+use IEEE.Numeric_Std.all;
+ use ieee.math_real.all;
+
+-- Uncomment the following library declaration if using
+-- arithmetic functions with Signed or Unsigned values
+--use IEEE.NUMERIC_STD.ALL;
+
+-- Uncomment the following library declaration if instantiating
+-- any Xilinx leaf cells in this code.
+--library UNISIM;
+--use UNISIM.VComponents.all;
+
+entity mapeo is
+  Port (
+         clk:in std_logic;
+        digital_in : in std_logic_vector(11 downto 0);
+        channel: in std_logic_vector(1 downto 0);
+        enable: in std_logic;
+        led_de_control: out std_logic_vector(3 downto 0);
+        carta_entrante_vga: out std_logic_vector(4 downto 0)
+   );
+end mapeo;
+
+architecture Behavioral of mapeo is
+type nombre_estado is ( inactivo,analisis ,analisis_completado );  
+	------- los estados que se usan para la separación y el análisis
+	    signal estado : nombre_estado := inactivo; ----los estados que se usan para la separación y el análisis
+--	    signal part1: std_logic_vector(14 downto 0);
+--	    signal part2: std_logic_vector(14 downto 0);
+--	    signal part3: std_logic_vector(14 downto 0);
+--	    signal part4: std_logic_vector(14 downto 0);
+	    signal clk_aux: std_logic:='0';
+	     signal p1: integer range 0 to 4095;
+	     signal p2: integer range 0 to 4095;
+	     signal p3: integer range 0 to 4095;
+	     signal p4: integer range 0 to 4095;
+--	     signal p1salida: integer range 0 to 4095;
+--	     signal p2salida: integer range 0 to 4095;
+--	     signal p3salida: integer range 0 to 4095;
+--	     signal p4salida: integer range 0 to 4095;
+	     signal catch1: integer range 0 to 4095;
+	     signal catch2: integer range 0 to 4095;
+	     signal catch3: integer range 0 to 4095;
+	     signal catch4: integer range 0 to 4095;
+	    signal cont:integer range 0 to 3 :=0;
+	    signal cont_aux:integer:=0;
+	    signal estable:integer :=125000;--division de 20ms/4*clk simulacion, en la vida real debe ser 1seg
+	     signal pantallazo:integer :=416750; --16.67ms/40ns
+	     signal cont_pantallazo:integer :=0;
+begin
+
+    
+    p1<=to_integer(unsigned(digital_in))when channel = "00";
+    p2<=to_integer(unsigned(digital_in))when channel = "01";
+    p3<=to_integer(unsigned(digital_in))when channel = "10";
+    p4<=to_integer(unsigned(digital_in))when channel = "11";
+
+process (clk,enable)
+begin
+if (enable = '0') then 
+estado <= inactivo;
+cont_aux <= 0;
+end if;
+                 
+case estado is
+-------------------------------------
+when inactivo => 
+ led_de_control<="0000";
+   carta_entrante_vga<="00000";
+ if (enable = '0') then 
+estado <= inactivo;
+ else
+  estado <= analisis; 
+  end if;
+---------------------------------------
+when analisis =>    
+if(rising_edge(clk)) then
+cont <= cont +1;  
+if cont=3 then 
+cont <= 0;
+clk_aux <= not clk_aux;
+
+    if cont_aux=estable then 
+    cont_aux <= 0;
+    estado <= analisis_completado;
+    else
+    if p1=catch1 and p2=catch2 and p3=catch3 and p4=catch4 then
+    cont_aux <= cont_aux +1;
+    else 
+    cont_aux <= 0;
+    catch1<=p1;
+    catch2<=p2;
+    catch3<=p3;
+    catch4<=p4;
+    estado <= analisis;
+    end if;
+    end if;
+end if; 
+ 
+end if;
+
+
+------------------------------
+when analisis_completado => 
+if (((catch1>2600)and(catch1<2720)) and ((catch2>1500)and(catch2<2100)) and ((catch3>1500)and(catch3<2100)) and ((catch4>1500)and(catch4<2150))) then
+                            --A
+                                led_de_control<="0001";
+                                carta_entrante_vga<="00001";
+                            elsif(((catch1>2150)and(catch1<2550)) and ((catch2>2650)and(catch2<4000)) and ((catch3>2700)and(catch3<4000)) and ((catch4>2800)and(catch4<4000))) then
+                            --B
+                                led_de_control<="0010";
+                                carta_entrante_vga<="00010";
+                            
+                            elsif(((catch1>2450)and(catch1<2750)) and ((catch2>2400)and(catch2<2700)) and ((catch3>2450)and(catch3<2750)) and ((catch4>2550)and(catch4<2800))) then
+                            --C
+                                led_de_control<="0011";
+                                carta_entrante_vga<="00011";
+                            elsif(((catch1>2270)and(catch1<2550)) and ((catch2>2750)and(catch2<4000)) and ((catch3>2200)and(catch3<2400)) and ((catch4>2200)and(catch4<2450))) then
+                            --D
+                                led_de_control<="0100";
+                                carta_entrante_vga<="00100";
+                            elsif(((catch1>2100)and(catch1<2400)) and ((catch2>1900)and(catch2<2340)) and ((catch3>2150)and(catch3<2420)) and ((catch4>2000)and(catch4<2300))) then
+                            --E
+                                led_de_control<="0101";
+                                carta_entrante_vga<="00101";
+                            elsif(((catch1>2250)and(catch1<2600)) and ((catch2>1850)and(catch2<2250)) and ((catch3>2650)and(catch3<4000)) and ((catch4>2850)and(catch4<4000))) then
+                            --F
+                                led_de_control<="0110";
+                                carta_entrante_vga<="00110";
+                            elsif(((catch1>2520)and(catch1<2700)) and ((catch2>2700)and(catch2<4000)) and ((catch3>2000)and(catch3<2250)) and ((catch4>2000)and(catch4<2250))) then
+                            --G
+                                led_de_control<="0111";
+                                carta_entrante_vga<="00111";
+                            elsif(((catch1>2400)and(catch1<2700)) and ((catch2>2680)and(catch2<4000)) and ((catch3>2650)and(catch3<4000)) and ((catch4>2000)and(catch4<2340))) then
+                            --H
+                                led_de_control<="1000";
+                                carta_entrante_vga<="01000";
+                            elsif(((catch1>2700)and(catch1<2855)) and ((catch2>2660)and(catch2<4000)) and ((catch3>2600)and(catch3<4000)) and ((catch4>2080)and(catch4<2315))) then
+                            --K
+                                led_de_control<="1001";
+                                carta_entrante_vga<="01001"; 
+                            
+                            elsif(((catch1>2700)and(catch1<4000)) and ((catch2>2650)and(catch2<4000)) and ((catch3>1900)and(catch3<2200)) and ((catch4>1900)and(catch4<2200))) then
+                            --L
+                                led_de_control<="1010";
+					            carta_entrante_vga<="01010";
+                            elsif(((catch1>2400)and(catch1<2650)) and ((catch2>2010)and(catch2<2390)) and ((catch3>2220)and(catch3<2440)) and ((catch4>2280)and(catch4<2520))) then
+                            --O
+                                led_de_control<="1011";
+                                carta_entrante_vga<="01011";
+                            elsif(((catch1>2600)and(catch1<2750)) and ((catch2>2735)and(catch2<4000)) and ((catch3>2350)and(catch3<2500)) and ((catch4>2100)and(catch4<2340))) then
+                            --P
+                                led_de_control<="1100";
+                                carta_entrante_vga<="01100";
+                                
+                            elsif(((catch1>2000)and(catch1<2500)) and ((catch2>1500)and(catch2<2040)) and ((catch3>1800)and(catch3<2100)) and ((catch4>1900)and(catch4<2240))) then
+                            --S
+                                led_de_control<="1101";
+                                carta_entrante_vga<="01101";
+                            elsif(((catch1>2400)and(catch1<2690)) and ((catch2>2050)and(catch2<2335)) and ((catch3>2000)and(catch3<2275)) and ((catch4>2000)and(catch4<2265))) then
+                            --T 
+                                led_de_control<="1110"; 
+                                carta_entrante_vga<="01110";
+                            elsif(((catch1>1700)and(catch1<2240)) and ((catch2>2230)and(catch2<2600)) and ((catch3>2140)and(catch3<2340)) and ((catch4>2140)and(catch4<2400))) then
+                            --X
+                                led_de_control<="1111";
+                                carta_entrante_vga<="01111";
+                            elsif(((catch1>2710)and(catch1<4000)) and ((catch2>1500)and(catch2<2215)) and ((catch3>1500)and(catch3<2260)) and ((catch4>1500)and(catch4<2390))) then
+                            --Y
+                                led_de_control<="0001";
+                                carta_entrante_vga<="10000";
+                            else 
+                                led_de_control<="0000";
+                                carta_entrante_vga<="00000";
+                            end if;
+if rising_edge(clk) then
+if cont_pantallazo = pantallazo then
+estado <= analisis;
+cont_pantallazo<=0;
+else
+cont_pantallazo<=cont_pantallazo+1;
+end if;
+end if;
+end case;
+--------------------------------------------------------------------------------------------------
+end process;
+end Behavioral;
